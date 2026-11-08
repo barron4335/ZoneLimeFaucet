@@ -1,11 +1,37 @@
 # LimeFaucet Automation (ZoneLimeFaucet)
 
+> **⚠️ ÖNEMLİ DİPNOT:** Bu eklenti **limefaucet.com** sitesine giriş yapılmadan **çalışmaz**. Kullanıcı önce kendi hesabıyla siteye giriş yapmalıdır. Eklenti, tarayıcıda bulunan cookies (çerez) bilgilerini kullanarak çalışır. Giriş yapılmamışsa görevler başlatılamaz.
+
+---
+
 Chrome (Manifest V3) eklentisi.  
 **LimeFaucet** sitesindeki YouTube görevlerini otomatik olarak çalıştırır: görevleri başlatır, video sekmesini açar, oynatmayı doğrular, kısa süre izler, görevi tamamlar ve sonuçları kaydeder.
 
 **GitHub:** [https://github.com/barron4335/ZoneLimeFaucet](https://github.com/barron4335/ZoneLimeFaucet)
 
 > **Uyarı:** Bu eklenti eğitim / kişisel otomasyon amaçlıdır. Sitenin kullanım şartlarını ihlal edebilecek şekilde kullanmak hesabınızın kısıtlanmasına yol açabilir. Kendi sorumluluğunuzda kullanın.
+
+---
+
+## 📱 MobileZoneLimeFaucet (Mobil Sürüm)
+
+**MobileZoneLimeFaucet** klasörü, eklentinin **mobil telefonlarda** çalışacak şekilde hazırlanmış sürümüdür.
+
+### Kullanmadan Önce Zorunlu Adım
+- **Lemur Browser** uygulamasını indirip kurmanız gerekir.  
+  (Android cihazlarda Chrome eklentilerini destekleyen tarayıcı)
+
+### Test Edildiği Platformlar
+
+| Platform          | Durum                          |
+|-------------------|--------------------------------|
+| Android Telefon   | ✅ Test edildi                 |
+| Linux             | ✅ Test edildi                 |
+| Windows           | ✅ Test edildi                 |
+
+**Test İlerlemesi:**  
+`[██████████████████████████████] 100%`  
+Tüm platformlarda başarıyla test edilmiştir.
 
 ---
 
@@ -94,12 +120,15 @@ Tüm görevler bittikten sonra seçilen aralıkta sayfa yenilenir. Ortada büyü
 
 > Not: `host_permissions: ["*://*/*"]` geniş izin istediği için Chrome uyarı verebilir. Sadece kendi kullanımınız için yükleyin.
 
+**Mobil (Android) için:**  
+MobileZoneLimeFaucet klasörünü kullanın. Önce **Lemur Browser** uygulamasını indirin, ardından eklentiyi Lemur Browser üzerinden yükleyin.
+
 ---
 
 ## Kullanım
 
 ### Temel akış
-1. `https://limefaucet.com` adresine gidin (çerezler otomatik yakalanır).
+1. `https://limefaucet.com` adresine gidin ve **kendi hesabınızla giriş yapın** (çerezler otomatik yakalanır).
 2. Eklenti sizi otomatik olarak `/youtube` sayfasına yönlendirebilir.
 3. Sağ üstte yüzen panel görünür.
 4. **“Tüm Görevleri Çalıştır”** butonuna basın.
@@ -218,4 +247,3 @@ LimeFaucet veya ilgili sitelerin hizmet şartlarını ihlal etmekten doğacak so
 
 Kaynak kod ve güncellemeler:  
 **https://github.com/barron4335/ZoneLimeFaucet**
-```
