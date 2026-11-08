@@ -60,6 +60,30 @@ LimeFaucet üzerinden kazandığınız kripto paraları çekebilmek için **Fauc
 
 ---
 
+## Ekran Görüntüleri
+
+### 1. Yüzen Panel – Kripto Değiştirme
+Panel üzerinden kripto birimini değiştirebilir, güncel kur bilgisini görebilirsiniz.
+
+![Yüzen Panel - Kripto Değiştirme](img/resim1.png)
+
+### 2. Görev Listesi ve Geçmiş
+Tamamlanan görevler, kazanılan puanlar ve geçmiş kayıtları panelde anlık olarak görünür.
+
+![Görev Listesi ve Geçmiş](img/resim2.png)
+
+### 3. Video Oynatma ve Puan Kazanma
+Video izlendikten sonra site “You earned +X Points” bildirimi gösterir. Sağ üstte kalan süre sayacı yer alır.
+
+![Video Tamamlandı - Puan Kazanma](img/resim3.png)
+
+### 4. Sürekli Döngü – Yenileme Geri Sayımı
+Tüm görevler bittikten sonra seçilen aralıkta sayfa yenilenir. Ortada büyük geri sayım, sağda panel görünür.
+
+![Yenilemeye Kalan Süre Overlay](img/resim4.png)
+
+---
+
 ## Kurulum
 
 1. Chrome’da `chrome://extensions` adresine gidin.
@@ -106,6 +130,11 @@ Panelin alt kısmından tarih seçip o güne ait görev kayıtlarını (başarı
 ├── video-bridge.js        # Isolated world – postMessage ↔ chrome.runtime köprüsü
 ├── popup.html / popup.js / popup.css
 ├── panel.css              # Yüzen panel stilleri
+├── img/                   # Ekran görüntüleri
+│   ├── resim1.png
+│   ├── resim2.png
+│   ├── resim3.png
+│   └── resim4.png
 ├── lib/
 │   ├── db.js              # IndexedDB yardımcıları
 │   └── dom-utils.js       # XPath / görünürlük yardımcıları
@@ -154,7 +183,6 @@ Sayfadaki “X Points ≈ Y COIN” bilgisinden dinamik oran okunur.
 | Sabit                      | Değer      | Açıklama                          |
 |----------------------------|------------|-----------------------------------|
 | `TASK_LIST_REFRESH_MS`     | 3000       | Panel görev listesi yenileme      |
-| `VIDEO_WAIT_SECONDS`       | 15         | (kullanılmıyor, rastgele 10-15)   |
 | İzleme süresi              | 10–15 sn   | Rastgele                          |
 | Yenileme aralığı           | 1–30 dk    | Kullanıcı seçimli (varsayılan 5)  |
 | `awaitingVideoTab` timeout | 18–20 sn   | Video sekmesi bekleme süresi      |
@@ -166,8 +194,7 @@ Sayfadaki “X Points ≈ Y COIN” bilgisinden dinamik oran okunur.
 - Site arayüzü (özellikle Shadow DOM) değişirse seçiciler kırılabilir.
 - Bazı video sayfalarında autoplay / muted politikaları yüzünden oynatma teyidi gecikebilir.
 - `host_permissions: *://*/*` çok geniştir; sadece gerekli domainlere indirgenebilir.
-- Manifest’te ikon tanımlanmamıştır (“ikon yok” notu mevcuttur).
-- content.js içinde hem kendi IndexedDB fonksiyonları hem de `lib/db.js` bulunmaktadır (birleştirilebilir).
+- Manifest’te ikon tanımlanmamıştır.
 
 ---
 
@@ -175,7 +202,7 @@ Sayfadaki “X Points ≈ Y COIN” bilgisinden dinamik oran okunur.
 
 - Console logları `[LF]`, `[BG]`, `[LF-BRIDGE]` önekleriyle filtrelenebilir.
 - Video sekmesinde `window.__lfVideoDone` ve `window.__lfVideoRunning` bayrakları tekrar enjeksiyonu engeller.
-- Panel sürükle-bırak destekler (`lfMakeDraggable`).
+- Panel sürükle-bırak destekler.
 - Sürekli mod `chrome.storage.local` içinde (`lfContinuousMode`, `lfRefreshMinutes`) saklanır.
 
 ---
