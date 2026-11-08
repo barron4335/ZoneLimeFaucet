@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "LimeFaucet Automation",
+  "version": "1.5",
+  "description": "LimeFaucet otomasyon eklentisi v1.5 — m.youtube kapatma + countdown + check düzeltmeleri.",
+  "permissions": [
+    "cookies",
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*/*",
+    "*://*.m.youtube.com/*",
+    "*://m.youtube.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LimeFaucet Automation"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.limefaucet.com/*"
+      ],
+      "js": [
+        "lib/db.js",
+        "lib/dom-utils.js",
+        "content.js"
+      ],
+      "css": [
+        "panel.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
