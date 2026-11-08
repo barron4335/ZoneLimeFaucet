@@ -1,9 +1,24 @@
-# ZoneLimeFaucet Automation
+# LimeFaucet Automation (ZoneLimeFaucet)
 
 Chrome (Manifest V3) eklentisi.  
 **LimeFaucet** sitesindeki YouTube görevlerini otomatik olarak çalıştırır: görevleri başlatır, video sekmesini açar, oynatmayı doğrular, kısa süre izler, görevi tamamlar ve sonuçları kaydeder.
 
+**GitHub:** [https://github.com/barron4335/ZoneLimeFaucet](https://github.com/barron4335/ZoneLimeFaucet)
+
 > **Uyarı:** Bu eklenti eğitim / kişisel otomasyon amaçlıdır. Sitenin kullanım şartlarını ihlal edebilecek şekilde kullanmak hesabınızın kısıtlanmasına yol açabilir. Kendi sorumluluğunuzda kullanın.
+
+---
+
+## FaucetPay Hesabı
+
+LimeFaucet üzerinden kazandığınız kripto paraları çekebilmek için **FaucetPay** hesabına ihtiyacınız vardır.
+
+1. [https://faucetpay.io](https://faucetpay.io) adresinden ücretsiz hesap açın.
+2. Hesabınızı doğrulayın ve istediğiniz kripto cüzdan adreslerini ekleyin.
+3. LimeFaucet sitesinde ödeme yöntemini FaucetPay olarak seçin ve FaucetPay kullanıcı adınızı / e-posta adresinizi girin.
+4. Kazandığınız puanlar belirli bir eşiğe ulaştığında FaucetPay hesabınıza aktarılır. Oradan da kendi cüzdanınıza çekebilirsiniz.
+
+> FaucetPay, birçok faucet sitesinin kullandığı güvenilir bir mikro-ödeme platformudur. Hesap açmak ücretsizdir.
 
 ---
 
@@ -169,4 +184,11 @@ Sayfadaki “X Points ≈ Y COIN” bilgisinden dinamik oran okunur.
 
 Bu proje kişisel kullanım için hazırlanmıştır.  
 LimeFaucet veya ilgili sitelerin hizmet şartlarını ihlal etmekten doğacak sonuçlardan kullanıcı sorumludur.
+
+---
+
+## Repo
+
+Kaynak kod ve güncellemeler:  
+**https://github.com/barron4335/ZoneLimeFaucet**
 ```
