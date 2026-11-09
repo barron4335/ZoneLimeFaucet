@@ -1,5 +1,5 @@
 // ===========================================================================
-// background.js — Gelişmiş sekme kapatma
+// background.js — Gelişmiş sekme kapatma ve enjeksiyon yönetimi
 // ===========================================================================
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -22,6 +22,7 @@ function isVideoPage(url) {
 
 async function injectVideoScripts(tabId, frameIds = null) {
   if (currentVideoTab && currentVideoTab.playDone) return;
+  // Tüm frame'lere enjekte et (iframe içindeki YouTube videoları için önemli)
   const target = frameIds ? { tabId, frameIds } : { tabId, allFrames: true };
 
   let watchSec = 60;
@@ -41,10 +42,12 @@ async function injectVideoScripts(tabId, frameIds = null) {
     });
   } catch (e) {}
 
+  // Bridge (ISOLATED world)
   try {
     await chrome.scripting.executeScript({ target, files: ['video-bridge.js'] });
   } catch (e) {}
 
+  // Content (MAIN world)
   try {
     await chrome.scripting.executeScript({ target, files: ['video-content.js'], world: 'MAIN' });
   } catch (e) {}
@@ -108,21 +111,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (msg && msg.type === 'CLOSE_VIDEO_TAB') {
       const mainTabId = sender.tab?.id;
-      console.log('[BG] CLOSE_VIDEO_TAB alındı, mainTabId:', mainTabId);
-
       const closeTab = (id) => {
         if (!id || id === mainTabId) return;
         chrome.tabs.remove(id).then(() => {
           console.log('[BG] Sekme kapatıldı:', id);
-        }).catch((e) => {
-          console.warn('[BG] Normal kapatma başarısız (Mises), aktifleştirip denenecek:', id);
+        }).catch(() => {
           chrome.tabs.update(id, { active: true }).then(() => {
             setTimeout(() => {
-              chrome.tabs.remove(id).then(() => {
-                console.log('[BG] Sekme yedek yöntemle kapatıldı:', id);
-              }).catch(err => {
-                console.warn('[BG] Sekme kapatılamadı, boş sayfaya yönlendiriliyor:', id);
-                // Son çare: Boş sayfaya yönlendirerek YouTube'un arka planda çalışmasını engelle
+              chrome.tabs.remove(id).catch(() => {
                 chrome.tabs.update(id, { url: 'about:blank' }).catch(() => {});
               });
             }, 200);
@@ -147,7 +143,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       };
 
       closeAllVideoTabs();
-      // Gecikmeli denemeler (Mises için)
       [800, 1500, 2500].forEach(delay => setTimeout(closeAllVideoTabs, delay));
 
       currentVideoTab = null;

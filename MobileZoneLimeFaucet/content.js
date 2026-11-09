@@ -4,6 +4,8 @@
 const TASK_LIST_REFRESH_MS = 3000;
 const VIDEO_WAIT_SECONDS = 15;
 
+let lfVideoWaitResolver = null; // Video bitişini bekleyen kilit (Promise)
+
 // ===========================================================================
 // IndexedDB
 // ===========================================================================
@@ -101,36 +103,24 @@ function lfGetElByXPath(xpath, ctx = document) {
   try { return document.evaluate(xpath, ctx, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue; }
   catch (_) { return null; }
 }
-function lfEsc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
 
 // ===========================================================================
-// REACT UYUMLU TIKLAMA SİMÜLATÖRÜ (Çoklu tıklama engellendi)
+// REACT UYUMLU TIKLAMA SİMÜLATÖRÜ
 // ===========================================================================
 async function lfSimulateClick(el, label) {
   if (!el) { console.warn(`[LF] ${label}: element null`); return false; }
-
   try { el.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' }); } catch (_) {}
   await lfSleep(300);
-
   const rect = el.getBoundingClientRect();
   const x = rect.left + Math.max(1, rect.width / 2);
   const y = rect.top + Math.max(1, rect.height / 2);
-  console.log(`[LF] ${label} → tag=${el.tagName} rect=(${Math.round(rect.left)},${Math.round(rect.top)})`);
-
-  const opts = {
-    bubbles: true, cancelable: true, composed: true,
-    view: window, clientX: x, clientY: y, button: 0, buttons: 1,
-  };
-
+  const opts = { bubbles: true, cancelable: true, composed: true, view: window, clientX: x, clientY: y, button: 0, buttons: 1 };
   try { el.focus(); } catch (_) {}
   try { el.dispatchEvent(new PointerEvent('pointerdown', opts)); } catch (_) {}
   try { el.dispatchEvent(new MouseEvent('mousedown', opts)); } catch (_) {}
   await lfSleep(50);
   try { el.dispatchEvent(new PointerEvent('pointerup', { ...opts, buttons: 0 })); } catch (_) {}
   try { el.dispatchEvent(new MouseEvent('mouseup', { ...opts, buttons: 0 })); } catch (_) {}
-  
   try { el.click(); } catch (_) {}
   return true;
 }
@@ -156,17 +146,12 @@ function lfGetAllTaskItems() {
 }
 function lfGetTaskInfo(item) {
   let points = 0;
-  const markEl =
-    item.querySelector('.list-video__info .mark:not(.mark_timer)') ||
-    item.querySelector('.list-video__info p.mark:not(.mark_timer)') ||
-    item.querySelector('.list-video__item-content .mark:not(.mark_timer)');
+  const markEl = item.querySelector('.list-video__info .mark:not(.mark_timer)') || item.querySelector('.list-video__info p.mark:not(.mark_timer)') || item.querySelector('.list-video__item-content .mark:not(.mark_timer)');
   if (markEl) {
     const m = (markEl.textContent || '').match(/([\d]+(?:[.,]\d+)?)/);
     if (m) points = parseFloat(m[1].replace(',', '.')) || 0;
   }
-  const textEl =
-    item.querySelector('.list-video__item-text') ||
-    item.querySelector('.list-video__item-content > p');
+  const textEl = item.querySelector('.list-video__item-text') || item.querySelector('.list-video__item-content > p');
   let text = textEl ? (textEl.textContent || '').trim() : '';
   if (!points) {
     const infoEl = item.querySelector('.list-video__item-content > div > p:nth-child(1)');
@@ -176,12 +161,7 @@ function lfGetTaskInfo(item) {
     if (!text) text = t;
   }
   let seconds = 0;
-  const timerEl =
-    item.querySelector('p.mark.mark_timer') ||
-    item.querySelector('.mark.mark_timer') ||
-    item.querySelector('.mark_timer') ||
-    item.querySelector('.icon-clock') ||
-    item.querySelector('[class*="mark_timer"]');
+  const timerEl = item.querySelector('p.mark.mark_timer') || item.querySelector('.mark.mark_timer') || item.querySelector('.mark_timer') || item.querySelector('.icon-clock') || item.querySelector('[class*="mark_timer"]');
   if (timerEl) {
     const tm = (timerEl.textContent || '').match(/(\d+)\s*sec/i) || (timerEl.textContent || '').match(/(\d+)/);
     if (tm) seconds = parseInt(tm[1], 10) || 0;
@@ -252,7 +232,6 @@ function lfGetInfoElements() {
   const xp2 = '/html/body/div[1]/div[2]/div/main/div/div[3]/div/div[2]/div[2]/span[3]';
   let el1 = lfGetElByXPath(xp1);
   let el2 = lfGetElByXPath(xp2);
-
   if (!el1 || !el2) {
     const all = Array.from(document.querySelectorAll('div, span, p, section'));
     for (const el of all) {
@@ -326,7 +305,6 @@ function lfCalcReward(points) {
         if (sel) sel.value = String(lfState.refreshMinutes);
       }
       if (st && st.lfContinuousMode) {
-        console.log('[LF] continuousMode kayıtlı → sayfa hazır, görevler başlatılacak');
         lfState.continuousMode = true;
         lfUpdateTaskControls();
         await lfSleep(4000);
@@ -334,7 +312,6 @@ function lfCalcReward(points) {
           if (lfState.stopRequested) break;
           const items = lfGetAllTaskItems();
           const pending = items.filter(el => !lfIsTaskCompleted(el));
-          console.log(`[LF] auto-start deneme #${attempt + 1}: ${pending.length} bekleyen görev`);
           if (pending.length > 0) {
             lfStartTaskRunner();
             break;
@@ -342,13 +319,10 @@ function lfCalcReward(points) {
           await lfSleep(2000);
         }
         if (lfState.continuousMode && !lfState.taskRunnerActive && !lfState.stopRequested) {
-          console.log('[LF] Görev yok, tam ekran geri sayım başlayacak');
           lfSchedulePageRefresh();
         }
       }
-    } catch (e) {
-      console.warn('[LF] continuousMode kontrol hatası:', e);
-    }
+    } catch (e) {}
   }
 })();
 
@@ -390,12 +364,8 @@ function lfCreatePanel(initialCrypto) {
       <div class="lf-refresh-row">
         <label class="lf-refresh-label">Yenileme (dk)</label>
         <select class="lf-refresh-select" id="lf-refresh-minutes">
-          <option value="1">1</option>
-          <option value="3">3</option>
-          <option value="5" selected>5</option>
-          <option value="10">10</option>
-          <option value="15">15</option>
-          <option value="30">30</option>
+          <option value="1">1</option><option value="3">3</option><option value="5" selected>5</option>
+          <option value="10">10</option><option value="15">15</option><option value="30">30</option>
         </select>
       </div>
       <div class="lf-task-controls">
@@ -403,8 +373,8 @@ function lfCreatePanel(initialCrypto) {
         <button class="lf-stop-tasks secondary" style="display:none;">Durdur</button>
       </div>
       <div class="lf-countdown-box" id="lf-countdown-container" style="display:none;">
-        <div class="lf-countdown-label">Kalan süre</div>
-        <div class="lf-countdown-time" id="lf-countdown-time">00:00</div>
+        <div class="lf-countdown-label">Durum</div>
+        <div class="lf-countdown-time" id="lf-countdown-time" style="font-size: 16px; margin: 10px 0;">Video sekmesinde izleniyor...</div>
         <div class="lf-countdown-task" id="lf-countdown-task"></div>
       </div>
       <div class="lf-task-section">
@@ -451,9 +421,7 @@ function lfCreatePanel(initialCrypto) {
         lfState.refreshMinutes = m;
         refreshSel.value = String(m);
       });
-    } catch (_) {
-      refreshSel.value = String(DEFAULT_REFRESH_MIN);
-    }
+    } catch (_) { refreshSel.value = String(DEFAULT_REFRESH_MIN); }
     refreshSel.addEventListener('change', () => {
       const m = Number(refreshSel.value) || DEFAULT_REFRESH_MIN;
       lfState.refreshMinutes = m;
@@ -507,7 +475,7 @@ function lfUpdateInfo() {
     const { el1, el2 } = lfGetInfoElements();
     if (i1) i1.textContent = el1?.textContent?.trim() || '—';
     if (i2) i2.textContent = el2?.textContent?.trim() || '—';
-  } catch (e) { console.warn(e); }
+  } catch (e) {}
 }
 let lfInfoPollTimer = null;
 function lfStartInfoPolling(duration = 15000) {
@@ -524,8 +492,6 @@ function lfStartInfoPolling(duration = 15000) {
 // 4. KRİPTO DEĞİŞTİRME
 // ===========================================================================
 async function lfHandleCryptoSelect(symbol) {
-  console.log(`[LF] === Kripto değiştir: ${symbol} ===`);
-
   const s1c = '#root > div.min-h-screen.relative.z-10.flex.items-stretch > div > div > div > div.flex-1.flex.justify-center > button > span.text-lime-400\\/60.text-xs';
   const s1cAlt = '#root > div.min-h-screen.relative.z-10.flex.items-stretch > div > div > div > div.flex-1.flex.justify-center > button > span[class*="text-lime-400"]';
   const s1x = '/html/body/div[1]/div[2]/div/div/div/div[2]/button/span[3]';
@@ -537,15 +503,12 @@ async function lfHandleCryptoSelect(symbol) {
     if (span) break;
     await lfSleep(200);
   }
-  if (!span) { console.warn('[LF] Crypto span BULUNAMADI'); return; }
+  if (!span) return;
 
   let clickable = span;
   let cur = span;
   for (let i = 0; i < 6 && cur; i++) {
-    if (cur.tagName === 'BUTTON' || cur.getAttribute('role') === 'button') {
-      clickable = cur;
-      break;
-    }
+    if (cur.tagName === 'BUTTON' || cur.getAttribute('role') === 'button') { clickable = cur; break; }
     cur = cur.parentElement;
   }
 
@@ -564,13 +527,12 @@ async function lfHandleCryptoSelect(symbol) {
   }
 
   if (!modal) {
-    console.warn('[LF] Modal açılmadı, ikinci deneme...');
     try { span.click(); } catch (_) {}
     await lfSleep(300);
     try { clickable.click(); } catch (_) {}
     await lfSleep(1500);
     modal = document.querySelector(mc) || lfGetElByXPath(mx);
-    if (!modal) { console.warn('[LF] Modal hala açılmadı, İPTAL'); return; }
+    if (!modal) return;
   }
 
   const allButtons = modal.querySelectorAll('button');
@@ -580,14 +542,12 @@ async function lfHandleCryptoSelect(symbol) {
     if (txt === symbol) { targetBtn = b; break; }
   }
 
-  if (!targetBtn) { console.warn(`[LF] "${symbol}" bulunamadı`); return; }
-
+  if (!targetBtn) return;
   await lfSimulateClick(targetBtn, `${symbol} Button`);
   await lfSleep(2500);
 
   const t = document.querySelector('#limefaucet-panel .lf-title');
   if (t) t.textContent = `Crypto: ${symbol}`;
-  console.log(`[LF] ${symbol} seçildi!`);
   try { lfRefreshTaskUI(); } catch (_) {}
   try {
     const dateInput = document.querySelector('#lf-history-date');
@@ -597,7 +557,7 @@ async function lfHandleCryptoSelect(symbol) {
 }
 
 // ===========================================================================
-// 5. Görev listesi paneli (TrustedHTML Hatası Giderildi)
+// 5. Görev listesi paneli
 // ===========================================================================
 function lfRefreshTaskUI() {
   const listEl = document.getElementById('lf-task-list');
@@ -670,7 +630,7 @@ function lfUpdateTaskControls() {
 }
 
 // ===========================================================================
-// 6. GÖREV YÜRÜTÜCÜ — 8 AŞAMA
+// 6. GÖREV YÜRÜTÜCÜ
 // ===========================================================================
 const DEFAULT_REFRESH_MIN = 5;
 const lfState = {
@@ -691,7 +651,6 @@ function lfSetContinuous(enabled) {
 function lfClearReloadTimer() {
   if (lfState.reloadTimer) { clearTimeout(lfState.reloadTimer); lfState.reloadTimer = null; }
   if (lfState.reloadCountdownInterval) { clearInterval(lfState.reloadCountdownInterval); lfState.reloadCountdownInterval = null; }
-  // Tam ekran sayacı gizle
   const overlay = document.getElementById('lf-fullscreen-overlay');
   if (overlay) overlay.style.display = 'none';
 }
@@ -710,55 +669,27 @@ function lfSchedulePageRefresh() {
   let remaining = Math.max(1, mins) * 60;
   console.log(`[LF] Görev turu bitti. ${mins} dk TAM EKRAN geri sayım başlıyor...`);
 
-  // Tam ekran katmanı oluştur (TrustedHTML hatası vermemesi için createElement kullanıyoruz)
   let overlay = document.getElementById('lf-fullscreen-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'lf-fullscreen-overlay';
-    overlay.style.cssText = `
-      position: fixed !important;
-      top: 0 !important; left: 0 !important;
-      width: 100vw !important; height: 100vh !important;
-      background-color: #0b1f0e !important; /* Mat yeşil */
-      z-index: 999999 !important;
-      display: flex !important;
-      flex-direction: column !important;
-      justify-content: center !important;
-      align-items: center !important;
-      pointer-events: none !important; /* Panelin tıklanabilir kalması için */
-    `;
+    overlay.style.cssText = `position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background-color: #0b1f0e !important; z-index: 999999 !important; display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; pointer-events: none !important;`;
 
     const label = document.createElement('div');
     label.id = 'lf-fs-label';
     label.textContent = 'YENİ GÖREVLER İÇİN YENİLEMEYE KALAN';
-    label.style.cssText = `
-      font-family: system-ui, sans-serif !important;
-      font-size: 16px !important; letter-spacing: 3px !important;
-      color: #4ade80 !important;
-      margin-bottom: 20px !important;
-    `;
+    label.style.cssText = `font-family: system-ui, sans-serif !important; font-size: 16px !important; letter-spacing: 3px !important; color: #4ade80 !important; margin-bottom: 20px !important;`;
 
     const timer = document.createElement('div');
     timer.id = 'lf-fs-timer';
-    timer.style.cssText = `
-      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace !important;
-      font-size: 90px !important; font-weight: bold !important;
-      color: #39ff14 !important; /* Neon yeşil */
-      text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14, 0 0 40px #39ff14, 0 0 80px #39ff14 !important;
-    `;
+    timer.style.cssText = `font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace !important; font-size: 90px !important; font-weight: bold !important; color: #39ff14 !important; text-shadow: 0 0 10px #39ff14, 0 0 20px #39ff14, 0 0 40px #39ff14, 0 0 80px #39ff14 !important;`;
 
     const task = document.createElement('div');
     task.id = 'lf-fs-task';
     task.textContent = 'Durdurmak için panelden "Durdur" butonuna basın';
-    task.style.cssText = `
-      font-family: system-ui, sans-serif !important;
-      font-size: 14px !important; color: #86efac !important;
-      margin-top: 30px !important;
-    `;
+    task.style.cssText = `font-family: system-ui, sans-serif !important; font-size: 14px !important; color: #86efac !important; margin-top: 30px !important;`;
 
-    overlay.appendChild(label);
-    overlay.appendChild(timer);
-    overlay.appendChild(task);
+    overlay.appendChild(label); overlay.appendChild(timer); overlay.appendChild(task);
     document.body.appendChild(overlay);
   } else {
     overlay.style.display = 'flex';
@@ -786,10 +717,7 @@ function lfSchedulePageRefresh() {
       const label = document.getElementById('lf-fs-label');
       const task = document.getElementById('lf-fs-task');
       if (label) label.textContent = 'YENİLENİYOR';
-      if (timer) {
-        timer.textContent = '00:00';
-        timer.style.fontSize = '60px';
-      }
+      if (timer) { timer.textContent = '00:00'; timer.style.fontSize = '60px'; }
       if (task) task.textContent = 'Lütfen bekleyin, sayfa yenileniyor...';
       
       setTimeout(() => {
@@ -827,6 +755,13 @@ function lfStopTaskRunner() {
   lfSetContinuous(false);
   lfClearReloadTimer();
   lfUpdateTaskControls();
+  
+  // Eğer video bitişini bekliyorsak, beklemeyi iptal et
+  if (lfVideoWaitResolver) {
+    lfVideoWaitResolver('stopped');
+    lfVideoWaitResolver = null;
+  }
+  
   try { chrome.runtime.sendMessage({ type: 'CLOSE_VIDEO_TAB' }).catch(() => {}); } catch (_) {}
   try { const box = document.getElementById('lf-countdown-container'); if (box) box.style.display = 'none'; } catch (_) {}
 }
@@ -872,58 +807,6 @@ function lfWaitForOpenVideoButton(timeout = 6000) {
       }
       if (Date.now() - start > timeout) { clearInterval(timer); resolve(null); }
     }, 200);
-  });
-}
-
-function lfRunMainCountdown(seconds, taskLabel) {
-  return new Promise((resolve) => {
-    const total = Math.max(5, Math.min(300, Number(seconds) || 60));
-    let remaining = total;
-    try {
-      const panel = document.getElementById('limefaucet-panel');
-      const body = panel ? panel.querySelector('.lf-body') : null;
-      const minBtn = panel ? panel.querySelector('.lf-minimize') : null;
-      if (body && body.style.display === 'none') {
-        body.style.display = 'block';
-        if (minBtn) minBtn.textContent = '—';
-      }
-    } catch (_) {}
-
-    const box = document.getElementById('lf-countdown-container');
-    const time = document.getElementById('lf-countdown-time');
-    const taskEl = document.getElementById('lf-countdown-task');
-    const labelEl = box ? box.querySelector('.lf-countdown-label') : null;
-    try {
-      if (box && time) {
-        box.style.display = 'block';
-        box.style.visibility = 'visible';
-        time.style.fontSize = '28px';
-        time.style.color = '#a3e635';
-        time.textContent = lfFormatMMSS(remaining);
-        if (labelEl) labelEl.textContent = 'Video izleniyor';
-        if (taskEl) taskEl.textContent = taskLabel || '';
-      }
-    } catch (_) {}
-    console.log('[LF] Ana sekme countdown başladı:', total, 'sn');
-    const iv = setInterval(() => {
-      if (lfState.stopRequested) {
-        clearInterval(iv);
-        try { if (box) box.style.display = 'none'; } catch (_) {}
-        resolve('stopped');
-        return;
-      }
-      remaining--;
-      try { if (time) time.textContent = lfFormatMMSS(remaining); } catch (_) {}
-      if (remaining <= 0) {
-        clearInterval(iv);
-        try {
-          if (time) time.textContent = '00:00';
-          if (labelEl) labelEl.textContent = 'Bitti';
-        } catch (_) {}
-        console.log('[LF] Ana sekme countdown bitti');
-        resolve('finished');
-      }
-    }, 1000);
   });
 }
 
@@ -993,25 +876,52 @@ async function lfProcessSingleTask(item, index, taskId) {
   try { await lfSimulateClick(openBtn, 'OpenVideo'); } catch (_) {}
   console.log(`[LF] Aşama 4 - Open video (süre: ${watchSeconds}s)`);
 
-  console.log(`[LF] Aşama 5-7 - Ana sekmede ${watchSeconds}s countdown`);
-  const cdResult = await lfRunMainCountdown(watchSeconds, `Görev #${taskNum}`);
+  // ANA DEĞİŞİKLİK: Arka planda saymak yerine video sekmesinden gelecek sinyali bekle
+  console.log(`[LF] Aşama 5-7 - Video sekmesinin bitmesi bekleniyor (Süre: ${watchSeconds}s)...`);
+  
+  try {
+    const box = document.getElementById('lf-countdown-container');
+    if (box) box.style.display = 'block';
+    const time = document.getElementById('lf-countdown-time');
+    if (time) time.textContent = `Video sekmesinde izleniyor (${watchSeconds}s)...`;
+  } catch(_) {}
 
-  if (cdResult === 'stopped') {
+  const cdResult = await new Promise((resolve) => {
+    lfVideoWaitResolver = resolve;
+    // Emniyet kemeri: Video süresi + 30 saniye sonra hala sinyal gelmezse zaman aşımı
+    setTimeout(() => {
+      if (lfVideoWaitResolver === resolve) {
+        lfVideoWaitResolver = null;
+        resolve('timeout');
+      }
+    }, (watchSeconds + 30) * 1000);
+  });
+
+  try { const box = document.getElementById('lf-countdown-container'); if (box) box.style.display = 'none'; } catch(_) {}
+
+  if (cdResult === 'stopped' || lfState.stopRequested) {
     try { await chrome.runtime.sendMessage({ type: 'CLOSE_VIDEO_TAB' }); } catch (_) {}
     if (listEl && listEl.children[index]) listEl.children[index].classList.remove('running');
     return false;
   }
 
-  // Süre bitti → tüm video sekmelerini kapat
-  console.log(`[LF] Süre bitti → video sekmeleri kapatılıyor`);
+  if (cdResult === 'failed' || cdResult === 'timeout' || cdResult === 'closed') {
+    console.warn(`[LF] Video başarısız veya sekme kapatıldı. (Sonuç: ${cdResult})`);
+    await lfSaveTaskRecord({
+      taskText: info.text, points: info.points,
+      crypto: lfGetCurrentCrypto(), cryptoReward: 0,
+      completed: false, startedAt, finishedAt: Date.now(),
+    });
+    if (listEl && listEl.children[index]) listEl.children[index].classList.remove('running');
+    return false;
+  }
+
+  // Süre bitti → tüm video sekmelerini kapat (Background zaten kapatıyor ama emniyet için)
+  console.log(`[LF] Aşama 8 - Süre bitti, Check butonuna geçiliyor`);
   try { await chrome.runtime.sendMessage({ type: 'CLOSE_VIDEO_TAB' }); } catch (_) {}
   
-  // Mises'in sekmeyi kapatması veya about:blank yapması için bekle
-  await lfSleep(4000); 
-
-  // AŞAMA 8: Check butonu
-  console.log(`[LF] Aşama 8 - Video bitti, Check bekleniyor`);
-  await lfSleep(1000); // Site UI'ı güncellensin
+  // Mises'in sekmeyi kapatması veya site UI'ının güncellenmesi için kısa bekleme
+  await lfSleep(2500); 
 
   let freshItem = item;
   try {
@@ -1100,7 +1010,7 @@ async function lfRunAllTasks() {
 }
 
 // ===========================================================================
-// 7. Geçmiş (TrustedHTML Hatası Giderildi)
+// 7. Geçmiş
 // ===========================================================================
 async function lfLoadHistory(dateStr) {
   const listEl = document.getElementById('lf-history-list');
@@ -1216,6 +1126,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'RUN_TASKS') { lfStartTaskRunner(); sendResponse({ ok: true }); return true; }
     if (msg.type === 'STOP_TASKS') { lfStopTaskRunner(); sendResponse({ ok: true }); return true; }
     if (msg.type === 'PLAY_CLICKED') { sendResponse({ ok: true }); return true; }
+    
+    // YENİ: Background'dan gelen video bitiş sinyallerini yakala
+    if (msg.type === 'VIDEO_FINISHED') {
+      console.log('[LF] Video bitti sinyali alındı!');
+      if (lfVideoWaitResolver) {
+        lfVideoWaitResolver('finished');
+        lfVideoWaitResolver = null;
+      }
+      sendResponse({ ok: true });
+      return true;
+    }
+    if (msg.type === 'VIDEO_FAILED' || msg.type === 'VIDEO_TAB_CLOSED') {
+      console.log('[LF] Video başarısız veya kapatıldı sinyali alındı!');
+      if (lfVideoWaitResolver) {
+        lfVideoWaitResolver(msg.type === 'VIDEO_FAILED' ? 'failed' : 'closed');
+        lfVideoWaitResolver = null;
+      }
+      sendResponse({ ok: true });
+      return true;
+    }
+
     sendResponse({ ok: false });
     return true;
   } catch (e) {
@@ -1227,19 +1158,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // ===========================================================================
 // 9. postMessage dinleyicisi
 // ===========================================================================
-console.log('[LF] postMessage dinleyicisi kuruldu (source: LF_VIDEO bekleniyor)');
 window.addEventListener('message', (ev) => {
   if (!ev.data || ev.data.source !== 'LF_VIDEO') return;
   const t = ev.data.type;
-  console.log('[LF] LF_VIDEO mesajı yakalandı:', t);
-
+  
   if (t === 'PLAY_CLICKED' || t === 'VIDEO_FINISHED' || t === 'VIDEO_FAILED') {
     try {
-      chrome.runtime.sendMessage({ type: t, reason: ev.data.reason || '' })
-        .then(() => console.log('[LF] background\'a iletildi:', t))
-        .catch((err) => console.warn('[LF] background\'a iletim hatası:', err));
-    } catch (err) {
-      console.warn('[LF] sendMessage throw:', err);
-    }
+      chrome.runtime.sendMessage({ type: t, reason: ev.data.reason || '' }).catch(() => {});
+    } catch (err) {}
   }
 });
