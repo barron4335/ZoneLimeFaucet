@@ -669,11 +669,6 @@ function lfClearReloadTimer() {
     clearInterval(lfState.reloadCountdownInterval);
     lfState.reloadCountdownInterval = null;
   }
-  // Tam ekran yenileme overlay'ini kaldır
-  try {
-    const ov = document.getElementById('lf-refresh-overlay');
-    if (ov) ov.remove();
-  } catch (_) {}
 }
 
 function lfFormatMMSS(totalSeconds) {
@@ -683,126 +678,6 @@ function lfFormatMMSS(totalSeconds) {
   return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
 }
 
-/** Tam ekran neon / matte yeşil yenileme geri sayımı */
-function lfCreateRefreshOverlay(initialSeconds) {
-  try {
-    const existing = document.getElementById('lf-refresh-overlay');
-    if (existing) existing.remove();
-  } catch (_) {}
-
-  const overlay = document.createElement('div');
-  overlay.id = 'lf-refresh-overlay';
-  overlay.setAttribute('aria-live', 'polite');
-  // Panel (z-index: 999999) üstte kalsın, tıklanabilir olsun
-  overlay.style.cssText = `
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 999990 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: linear-gradient(160deg, rgba(6, 18, 8, 0.97) 0%, rgba(12, 32, 14, 0.96) 40%, rgba(8, 22, 10, 0.98) 100%) !important;
-    pointer-events: none !important;
-    font-family: system-ui, -apple-system, sans-serif !important;
-    user-select: none !important;
-    box-sizing: border-box !important;
-  `;
-
-  // Hafif matte yeşil grid / glow katmanı
-  const glow = document.createElement('div');
-  glow.style.cssText = `
-    position: absolute !important;
-    inset: 0 !important;
-    background:
-      radial-gradient(ellipse 80% 50% at 50% 40%, rgba(57, 255, 20, 0.12) 0%, transparent 55%),
-      radial-gradient(ellipse 60% 40% at 50% 70%, rgba(34, 197, 94, 0.08) 0%, transparent 50%) !important;
-    pointer-events: none !important;
-  `;
-  overlay.appendChild(glow);
-
-  // İnce neon kenar çizgisi (üst/alt)
-  const borderTop = document.createElement('div');
-  borderTop.style.cssText = `
-    position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important;
-    height: 3px !important;
-    background: linear-gradient(90deg, transparent, #39ff14, #22c55e, #39ff14, transparent) !important;
-    box-shadow: 0 0 18px #39ff14, 0 0 40px rgba(57,255,20,0.4) !important;
-  `;
-  const borderBottom = borderTop.cloneNode(true);
-  borderBottom.style.top = 'auto';
-  borderBottom.style.bottom = '0';
-  overlay.appendChild(borderTop);
-  overlay.appendChild(borderBottom);
-
-  // İçerik kutusu
-  const content = document.createElement('div');
-  content.style.cssText = `
-    position: relative !important;
-    z-index: 1 !important;
-    text-align: center !important;
-    padding: 32px 48px !important;
-    border: 1px solid rgba(57, 255, 20, 0.35) !important;
-    border-radius: 20px !important;
-    background: rgba(10, 28, 12, 0.75) !important;
-    box-shadow:
-      0 0 40px rgba(57, 255, 20, 0.15),
-      inset 0 0 30px rgba(34, 197, 94, 0.06) !important;
-    min-width: 280px !important;
-  `;
-
-  const label = document.createElement('div');
-  label.id = 'lf-refresh-label';
-  label.textContent = 'YENİLEMEYE KALAN';
-  label.style.cssText = `
-    font-size: 14px !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.22em !important;
-    text-transform: uppercase !important;
-    color: #4ade80 !important;
-    margin-bottom: 12px !important;
-    text-shadow: 0 0 12px rgba(74, 222, 128, 0.5) !important;
-  `;
-
-  const timeEl = document.createElement('div');
-  timeEl.id = 'lf-refresh-time';
-  timeEl.textContent = lfFormatMMSS(initialSeconds);
-  timeEl.style.cssText = `
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace !important;
-    font-size: clamp(56px, 12vw, 96px) !important;
-    font-weight: 800 !important;
-    line-height: 1.05 !important;
-    color: #39ff14 !important;
-    text-shadow:
-      0 0 10px #39ff14,
-      0 0 28px rgba(57, 255, 20, 0.7),
-      0 0 55px rgba(57, 255, 20, 0.35) !important;
-    letter-spacing: 0.06em !important;
-    margin: 8px 0 16px !important;
-  `;
-
-  const sub = document.createElement('div');
-  sub.id = 'lf-refresh-sub';
-  sub.textContent = 'Durdurmak için sağ üstteki paneldeki Durdur butonuna basın';
-  sub.style.cssText = `
-    font-size: 13px !important;
-    color: #86efac !important;
-    opacity: 0.9 !important;
-    max-width: 320px !important;
-    margin: 0 auto !important;
-    line-height: 1.4 !important;
-  `;
-
-  content.appendChild(label);
-  content.appendChild(timeEl);
-  content.appendChild(sub);
-  overlay.appendChild(content);
-  document.body.appendChild(overlay);
-  return { overlay, timeEl, label, sub };
-}
-
 function lfSchedulePageRefresh() {
   lfClearReloadTimer();
   if (!lfState.continuousMode || lfState.stopRequested) return;
@@ -810,13 +685,22 @@ function lfSchedulePageRefresh() {
   let remaining = Math.max(1, mins) * 60; // saniye
   console.log(`[LF] Görev turu bitti. ${mins} dk geri sayım başlıyor (döngü aktif)...`);
 
-  // Eski panel countdown kutusunu gizle (artık tam ekran kullanıyoruz)
+  const box = document.getElementById('lf-countdown-container');
+  const time = document.getElementById('lf-countdown-time');
+  const taskEl = document.getElementById('lf-countdown-task');
+  const labelEl = box ? box.querySelector('.lf-countdown-label') : null;
+
   try {
-    const box = document.getElementById('lf-countdown-container');
-    if (box) box.style.display = 'none';
+    if (box && time) {
+      box.style.display = 'block';
+      time.style.fontSize = '28px';
+      time.style.color = '#a3e635';
+      time.textContent = lfFormatMMSS(remaining);
+      if (labelEl) labelEl.textContent = 'Yenilemeye kalan';
+      if (taskEl) taskEl.textContent = 'Durdurmak için Durdur butonuna basın';
+    }
   } catch (_) {}
 
-  const ui = lfCreateRefreshOverlay(remaining);
   lfUpdateTaskControls();
 
   lfState.reloadCountdownInterval = setInterval(() => {
@@ -826,29 +710,25 @@ function lfSchedulePageRefresh() {
     }
     remaining--;
     try {
-      if (ui.timeEl) ui.timeEl.textContent = lfFormatMMSS(remaining);
+      if (time) time.textContent = lfFormatMMSS(remaining);
     } catch (_) {}
 
     if (remaining <= 0) {
-      // Interval'i durdur ama overlay'i HEMEN kaldırma (son mesaj görünsün)
-      if (lfState.reloadCountdownInterval) {
-        clearInterval(lfState.reloadCountdownInterval);
-        lfState.reloadCountdownInterval = null;
-      }
+      lfClearReloadTimer();
       try {
-        if (ui.timeEl) {
-          ui.timeEl.style.fontSize = 'clamp(28px, 6vw, 42px)';
-          ui.timeEl.textContent = 'SAYFA YENİLENİYOR...';
+        if (time) {
+          time.style.fontSize = '14px';
+          time.textContent = 'Sayfa yenileniyor...';
         }
-        if (ui.label) ui.label.textContent = 'BİLDİRİM';
-        if (ui.sub) ui.sub.textContent = 'Yeni görevler kontrol edilecek';
+        if (labelEl) labelEl.textContent = 'Bildirim';
+        if (taskEl) taskEl.textContent = 'Yeni görevler kontrol edilecek';
       } catch (_) {}
       console.log('[LF] Geri sayım bitti → sayfa yenileniyor');
-      // Kısa bildirim sonrası yenile — overlay ekranda kalır
+      // Kısa bildirim sonrası yenile
       setTimeout(() => {
         if (!lfState.continuousMode || lfState.stopRequested) return;
         window.location.reload();
-      }, 900);
+      }, 800);
     }
   }, 1000);
 }
