@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "LimeFaucet Automation",
-  "version": "1.5",
-  "description": "LimeFaucet otomasyon eklentisi v1.5 — m.youtube kapatma + countdown + check düzeltmeleri.",
+  "version": "1.6.1",
+  "description": "LimeFaucet otomasyon eklentisi v1.6.1 — SW state kaybına karşı 3 katmanlı dayanıklı sekme kapatma + enjeksiyon düzeltmesi.",
   "permissions": [
     "cookies",
     "storage",
