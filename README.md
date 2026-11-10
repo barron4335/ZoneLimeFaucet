@@ -13,13 +13,45 @@ Chrome (Manifest V3) eklentisi.
 
 ---
 
-## 📱 MobileZoneLimeFaucet (Mobil Sürüm)
+## Sürümler
 
-**MobileZoneLimeFaucet** klasörü, eklentinin **mobil telefonlarda** çalışacak şekilde hazırlanmış sürümüdür.
+| Sürüm | Klasör / Paket              | Açıklama |
+|-------|-----------------------------|----------|
+| **DesktopZoneLimeFaucet** | `v8.0` | Masaüstü (Chrome / Edge / Chromium) için stabil sürüm |
+| **MobileZoneLimeFaucet**  | `v1.6` | Mobil (Lemur Browser + Android) için optimize edilmiş sürüm |
+
+Bu depodaki güncel paket **MobileZoneLimeFaucet v1.6** (manifest `1.6.1`) temellidir. Masaüstü kullanımı için aynı kod tabanı DesktopZoneLimeFaucet **v8.0** olarak işaretlenmiştir.
+
+---
+
+## 📱 MobileZoneLimeFaucet (Mobil Sürüm – v1.6)
+
+**MobileZoneLimeFaucet** klasörü / paketi, eklentinin **mobil telefonlarda** çalışacak şekilde hazırlanmış sürümüdür.
 
 ### Kullanmadan Önce Zorunlu Adım
 - **Lemur Browser** uygulamasını indirip kurmanız gerekir.  
   (Android cihazlarda Chrome eklentilerini destekleyen tarayıcı)
+
+### Service Worker Uyuma / Ölme Sorunu Düzeltmesi (v1.6)
+
+Manifest V3 Service Worker’lar, tarayıcı tarafından yaklaşık **30 saniye** işlem görmezse otomatik olarak uyutulur / sonlandırılır. Bu durum özellikle mobil ortamda (Lemur Browser) şu sorunlara yol açıyordu:
+
+- Video sekmesi yakalandıktan sonra state kaybolması
+- “Open video” sonrası sekmenin kapatılamaması
+- Görev tamamlandıktan sonra bir sonraki göreve geçişin bozulması
+- Enjeksiyonların (video-content / video-bridge) tekrar çalışmaması
+
+**v1.6’da yapılan düzeltmeler:**
+
+1. **State kalıcılığı** – `chrome.storage.session` yerine **`chrome.storage.local`** kullanıldı. Service Worker öldüğünde bile `awaitingVideoTab` ve `currentVideoTab` bilgileri korunur.
+2. **3 katmanlı dayanıklı sekme kapatma**:
+   - Öncelik: `sender.tab` üzerinden gelen tab ID
+   - İkinci katman: `chrome.storage.local`’den okunan state
+   - Üçüncü katman: Tüm açık video sekmelerini tarayan güçlü fallback
+3. **Lemur / mobil uyumluluk** – Mobil YouTube (`m.youtube.com`) ve frame yüklemeleri için ek enjeksiyon ve state senkronizasyonu eklendi.
+4. **Play doğrulama sonrası koruma** – `playDone` bayrağı set edildikten sonra gereksiz yeniden enjeksiyon engellenir; player reset riski azaltılır.
+
+Bu iyileştirmeler sayesinde 30 saniyelik SW uyuma sorunu büyük ölçüde giderilmiş ve mobil cihazlarda görev akışı stabil hale getirilmiştir.
 
 ### Test Edildiği Platformlar
 
@@ -32,6 +64,14 @@ Chrome (Manifest V3) eklentisi.
 **Test İlerlemesi:**  
 `[██████████████████████████████] 100%`  
 Tüm platformlarda başarıyla test edilmiştir.
+
+---
+
+## 💻 DesktopZoneLimeFaucet (Masaüstü Sürüm – v8.0)
+
+Masaüstü Chrome / Edge / diğer Chromium tabanlı tarayıcılar için hazırlanan stabil sürümdür.  
+Aynı kod tabanını kullanır; Service Worker state yönetimi, video enjeksiyonu ve panel özellikleri Mobile v1.6 ile uyumludur.  
+Masaüstü ortamında SW daha uzun süre canlı kaldığı için ek mobil özel optimizasyonlara ihtiyaç duyulmaz, ancak state kalıcılığı sayesinde yine de dayanıklıdır.
 
 ---
 
@@ -112,16 +152,21 @@ Tüm görevler bittikten sonra seçilen aralıkta sayfa yenilenir. Ortada büyü
 
 ## Kurulum
 
+### Masaüstü (DesktopZoneLimeFaucet v8.0)
+
 1. Chrome’da `chrome://extensions` adresine gidin.
 2. Sağ üstten **Geliştirici modu**nu açın.
 3. **Paketlenmemiş öğe yükle** butonuna tıklayın.
-4. Bu klasörü seçin (manifest.json’un bulunduğu dizin).
+4. Bu klasörü seçin (`manifest.json`’un bulunduğu dizin).
 5. Eklenti yüklendikten sonra LimeFaucet sitesine gidin.
 
 > Not: `host_permissions: ["*://*/*"]` geniş izin istediği için Chrome uyarı verebilir. Sadece kendi kullanımınız için yükleyin.
 
-**Mobil (Android) için:**  
-MobileZoneLimeFaucet klasörünü kullanın. Önce **Lemur Browser** uygulamasını indirin, ardından eklentiyi Lemur Browser üzerinden yükleyin.
+### Mobil (MobileZoneLimeFaucet v1.6)
+
+1. **Lemur Browser** uygulamasını Android cihazınıza indirin ve kurun.
+2. Lemur Browser içinde eklenti yükleme menüsünden **MobileZoneLimeFaucet** klasörünü seçin.
+3. LimeFaucet sitesine gidin ve hesabınızla giriş yapın.
 
 ---
 
@@ -154,6 +199,7 @@ Panelin alt kısmından tarih seçip o güne ait görev kayıtlarını (başarı
 ```
 ├── manifest.json          # Manifest V3 tanımı
 ├── background.js          # Service worker – sekme yakalama, injection, mesaj yönlendirme
+│                          # (v1.6: chrome.storage.local state + 3 katmanlı kapatma)
 ├── content.js             # Ana content script (limefaucet.com) – panel + görev motoru
 ├── video-content.js       # MAIN world – video oynatma + countdown
 ├── video-bridge.js        # Isolated world – postMessage ↔ chrome.runtime köprüsü
@@ -198,8 +244,13 @@ content.js  →  görevi tamamlar / kaydeder
 
 ### Injection stratejisi
 - `chrome.scripting.executeScript` ile hem Isolated hem MAIN world’e enjekte edilir.
-- `PLAY_CLICKED` geldikten sonra (`playDone = true`) yeni enjeksiyon yapılmaz (player reset önlenir).
-- Frame yüklemelerinde (`webNavigation.onCompleted`) ek enjeksiyon yapılır.
+- `PLAY_CLICKED` geldikten sonra `playDone = true` ile yeni enjeksiyon yapılmaz (player reset önlenir).
+- Frame yüklemelerinde `webNavigation.onCompleted` ile ek enjeksiyon yapılır.
+
+### Service Worker dayanıklılığı (v1.6+)
+- Kritik state (`awaitingVideoTab`, `currentVideoTab`) `chrome.storage.local` içinde tutulur.
+- SW öldüğünde bile state geri yüklenir ve sekme kapatma / görev devamı çalışmaya devam eder.
+- Özellikle Lemur Browser ve mobil ortamlarda 30 saniyelik idle timeout’a karşı koruma sağlar.
 
 ### Kur hesaplama
 Sayfadaki “X Points ≈ Y COIN” bilgisinden dinamik oran okunur.  
@@ -215,6 +266,7 @@ Sayfadaki “X Points ≈ Y COIN” bilgisinden dinamik oran okunur.
 | İzleme süresi              | 10–15 sn   | Rastgele                          |
 | Yenileme aralığı           | 1–30 dk    | Kullanıcı seçimli (varsayılan 5)  |
 | `awaitingVideoTab` timeout | 18–20 sn   | Video sekmesi bekleme süresi      |
+| SW idle timeout (MV3)      | ~30 sn     | v1.6 state kalıcılığı ile aşılır  |
 
 ---
 
@@ -224,6 +276,7 @@ Sayfadaki “X Points ≈ Y COIN” bilgisinden dinamik oran okunur.
 - Bazı video sayfalarında autoplay / muted politikaları yüzünden oynatma teyidi gecikebilir.
 - `host_permissions: *://*/*` çok geniştir; sadece gerekli domainlere indirgenebilir.
 - Manifest’te ikon tanımlanmamıştır.
+- Mobilde (Lemur) Service Worker davranışları tarayıcı sürümüne göre değişiklik gösterebilir; v1.6 state kalıcılığı bu riski minimize eder.
 
 ---
 
@@ -232,7 +285,8 @@ Sayfadaki “X Points ≈ Y COIN” bilgisinden dinamik oran okunur.
 - Console logları `[LF]`, `[BG]`, `[LF-BRIDGE]` önekleriyle filtrelenebilir.
 - Video sekmesinde `window.__lfVideoDone` ve `window.__lfVideoRunning` bayrakları tekrar enjeksiyonu engeller.
 - Panel sürükle-bırak destekler.
-- Sürekli mod `chrome.storage.local` içinde (`lfContinuousMode`, `lfRefreshMinutes`) saklanır.
+- Sürekli mod `chrome.storage.local` içinde `lfContinuousMode`, `lfRefreshMinutes` olarak saklanır.
+- State’i temizlemek için popup’taki “Veritabanını Temizle” veya `chrome.storage.local` üzerinden `lfAwaitingVideoTab` / `lfCurrentVideoTab` anahtarlarını silebilirsiniz.
 
 ---
 
@@ -247,3 +301,7 @@ LimeFaucet veya ilgili sitelerin hizmet şartlarını ihlal etmekten doğacak so
 
 Kaynak kod ve güncellemeler:  
 **https://github.com/barron4335/ZoneLimeFaucet**
+
+---
+
+**MobileZoneLimeFaucet v1.6** · **DesktopZoneLimeFaucet v8.0**
