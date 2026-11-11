@@ -13,6 +13,21 @@ Chrome (Manifest V3) eklentisi.
 
 ---
 
+## 🎬 Demo Video
+
+Eklentinin çalışma akışını gösteren demo videosu:
+
+**[⬇️ LimeFaucet.mp4 indir](https://github.com/barron4335/ZoneLimeFaucet/raw/main/video/LimeFaucet.mp4)**
+
+<video src="https://github.com/barron4335/ZoneLimeFaucet/raw/main/video/LimeFaucet.mp4" controls width="100%" style="max-width: 800px;">
+  Tarayıcınız video etiketini desteklemiyor. 
+  <a href="https://github.com/barron4335/ZoneLimeFaucet/raw/main/video/LimeFaucet.mp4">Videoyu indirmek için tıklayın</a>
+</video>
+
+> Video dosyası: [`video/LimeFaucet.mp4`](https://github.com/barron4335/ZoneLimeFaucet/blob/main/video/LimeFaucet.mp4)
+
+---
+
 ## Sürümler
 
 | Sürüm | Klasör / Paket              | Açıklama |
@@ -210,6 +225,8 @@ Panelin alt kısmından tarih seçip o güne ait görev kayıtlarını (başarı
 │   ├── resim2.png
 │   ├── resim3.png
 │   └── resim4.png
+├── video/                 # Demo video
+│   └── LimeFaucet.mp4
 ├── lib/
 │   ├── db.js              # IndexedDB yardımcıları
 │   └── dom-utils.js       # XPath / görünürlük yardımcıları
