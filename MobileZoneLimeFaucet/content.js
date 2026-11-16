@@ -851,9 +851,52 @@ async function lfProcessSingleTask(item, index, taskId) {
     return false;
   }
 
-  const openBtn = await lfWaitForOpenVideoButton(8000);
-  if (!openBtn) {
-    console.warn(`[LF] Görev #${taskNum}: "Open video" bulunamadı`);
+  // Open Youtube veya Open Video butonunu bekle (XPath öncelikli, React uyumlu)
+  const openXPath = '/html/body/div/div[2]/div/main/div/div[4]/div//div[2]/div[1]/div[2]/div[2]/button';
+  let openBtn = null;
+  let isYoutube = false;
+  const waitStart = Date.now();
+  const waitTimeout = 8000;
+
+  while (Date.now() - waitStart < waitTimeout && !lfState.stopRequested) {
+    // 1. Verilen XPath ile kontrol et
+    const xpathBtn = lfGetElByXPath(openXPath);
+    if (xpathBtn && lfIsVisible(xpathBtn)) {
+      const txt = (xpathBtn.textContent || '').trim();
+      if (/open\s*youtube/i.test(txt)) {
+        openBtn = xpathBtn;
+        isYoutube = true;
+        break;
+      } else if (/open\s*video/i.test(txt)) {
+        openBtn = xpathBtn;
+        isYoutube = false;
+        break;
+      }
+    }
+
+    // 2. Fallback: metin araması (shadow root dahil)
+    const sr = lfGetTasksShadowRoot();
+    const candidates = [];
+    if (sr) sr.querySelectorAll('button').forEach(b => candidates.push(b));
+    document.querySelectorAll('button').forEach(b => candidates.push(b));
+    for (const b of candidates) {
+      const txt = (b.textContent || '').trim();
+      if (/open\s*youtube/i.test(txt) && lfIsVisible(b)) {
+        openBtn = b;
+        isYoutube = true;
+        break;
+      }
+      if (/open\s*video/i.test(txt) && lfIsVisible(b) && !openBtn) {
+        openBtn = b;
+        isYoutube = false;
+      }
+    }
+    if (openBtn) break;
+    await lfSleep(200);
+  }
+
+  if (!openBtn || lfState.stopRequested) {
+    console.warn(`[LF] Görev #${taskNum}: "Open Youtube" veya "Open Video" bulunamadı`);
     await lfSaveTaskRecord({
       taskText: info.text, points: info.points,
       crypto: lfGetCurrentCrypto(), cryptoReward: 0,
@@ -872,9 +915,10 @@ async function lfProcessSingleTask(item, index, taskId) {
   try { await chrome.runtime.sendMessage({ type: 'TASK_START_VIDEO', seconds: watchSeconds }); } catch (_) {}
   await lfSleep(300);
   
-  // Open Video tıkla
-  try { await lfSimulateClick(openBtn, 'OpenVideo'); } catch (_) {}
-  console.log(`[LF] Aşama 4 - Open video (süre: ${watchSeconds}s)`);
+  // Open Youtube veya Open Video tıkla (React uyumlu simülasyon)
+  const clickLabel = isYoutube ? 'OpenYoutube' : 'OpenVideo';
+  try { await lfSimulateClick(openBtn, clickLabel); } catch (_) {}
+  console.log(`[LF] Aşama 4 - ${clickLabel} tıklandı (süre: ${watchSeconds}s)`);
 
   // ANA DEĞİŞİKLİK: Arka planda saymak yerine video sekmesinden gelecek sinyali bekle
   console.log(`[LF] Aşama 5-7 - Video sekmesinin bitmesi bekleniyor (Süre: ${watchSeconds}s)...`);
